@@ -6,16 +6,16 @@ import time
 import imageio
 
 class CONFIG:
-    IMAGE_WIDTH = 200
-    IMAGE_HEIGHT = 150
-    BATCH_SIZE = 2
+    IMAGE_WIDTH = 256
+    IMAGE_HEIGHT = 256
+    BATCH_SIZE = 3
     COLOR_CHANNELS = 3
     VGG_MODEL = 'pretrained-model/imagenet-vgg-verydeep-19.mat'  # Pick the VGG 19-layer model by from the paper "Very Deep Convolutional Networks for Large-Scale Image Recognition".
     STYLE_IMAGE = 'images/wave.jpg'  # Style image to use.
     CONTENT_IMAGE_FILE = './train2014'  # Content image to use.
     OUTPUT_DIR = 'output/'
 
-    W_CONTENT = 5
+    W_CONTENT = 1
     W_STYLE = 255
 
 def train_fnst():
@@ -43,6 +43,12 @@ def train_fnst():
             train_op = tf.train.AdamOptimizer(1e-3).minimize(total_loss, global_step=global_step, var_list=variable_to_train)
             print(variable_to_train)
 
+            variables_to_restore = []
+            for v in tf.global_variables():
+                if not (v.name.startswith('vgg')):
+                    variables_to_restore.append(v)
+            saver = tf.train.Saver(variables_to_restore, write_version=tf.train.SaverDef.V2)
+
             #开始训练
             sess.run([tf.global_variables_initializer(), tf.local_variables_initializer()])
             coord = tf.train.Coordinator()
@@ -57,12 +63,13 @@ def train_fnst():
                     if step%10 == 0:
                       print('step: %d, total Loss %f, secs/step: %f'
                                         %(step,loss_t, elapsed_time))
-                    if step == 999:
-                        idex = 0;
-                        imge = np.clip(y[0],0,255).astype('uint8')
-                        imageio.imsave(CONFIG.OUTPUT_DIR+str(idex)+".jpg",imge);
+                    if step == 1500:
+                        for index in range(3):
+                            imge = np.clip(y[index],0,255).astype('uint8')
+                            imageio.imsave(CONFIG.OUTPUT_DIR+str(index)+".jpg",imge);
             except tf.errors.OutOfRangeError:
                 print("done")
+                saver.save(sess, './output/fast-style-model.ckpt-done')
             finally:
                 coord.request_stop()
             coord.join(threads)

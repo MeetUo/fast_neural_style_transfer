@@ -43,3 +43,14 @@ def style_image(path,height, width):
     processed_image = reshape_and_normalize_image(processed_image)
     image = tf.expand_dims(processed_image, 0)
     return image
+
+def get_eval_image(path, height, width):
+    img_bytes = tf.read_file(path)
+    if path.lower().endswith('png'):
+        image = tf.image.decode_png(img_bytes)
+    else:
+        image = tf.image.decode_jpeg(img_bytes)
+    image.set_shape([height, width, 3])
+    image = tf.to_float(image)
+    processed_image = reshape_and_normalize_image(image)
+    return processed_image

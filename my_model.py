@@ -36,6 +36,29 @@ def get_my_model(image):
             weight = tf.Variable(tf.truncated_normal(shape, stddev=0.1), name='weight')
             return tf.nn.conv2d_transpose(x,filter = weight,strides=[1,strides,strides,1],
                                           padding='SAME',name='dconv',output_shape=out_shape)
+
+    def resize_conv2d(x, input_filters, output_filters, kernel, strides,out_shape):
+        '''
+        An alternative to transposed convolution where we first resize, then convolve.
+        See http://distill.pub/2016/deconv-checkerboard/
+
+        For some reason the shape needs to be statically known for gradient propagation
+        through tf.image.resize_images, but we only know that for fixed image size, so we
+        plumb through a "training" argument
+        '''
+        with tf.variable_scope('conv_transpose'):
+            height = out_shape[1]
+            width = out_shape[2]
+
+            new_height = height * strides
+            new_width = width * strides
+
+            x_resized = tf.image.resize_images(x, [new_height, new_width], tf.image.ResizeMethod.NEAREST_NEIGHBOR)
+
+            # shape = [kernel, kernel, input_filters, output_filters]
+            # weight = tf.Variable(tf.truncated_normal(shape, stddev=0.1), name='weight')
+            return conv2d(x_resized, input_filters, output_filters, kernel, strides)
+
     def reslayer(x,filter,kernel,strides):
         with tf.variable_scope('resnet'):
             conv1 = conv2d(x, filter, filter, kernel, strides)
@@ -60,9 +83,11 @@ def get_my_model(image):
                 dnum += 1;
                 out_shape = out_shpaes[len(out_shpaes)-dnum]
                 if name.endswith('3'):
-                    conv = tanh(instance_norm(dconv2d(conv, arg_num[0], arg_num[1], arg_num[2], arg_num[3],out_shape)))
+                    conv = tanh(instance_norm(resize_conv2d(conv, arg_num[0],
+                                                            arg_num[1], arg_num[2], arg_num[3], out_shape)))
                 else:
-                    conv = relu(instance_norm(dconv2d(conv, arg_num[0], arg_num[1], arg_num[2], arg_num[3],out_shape)))
+                    conv = relu(instance_norm(resize_conv2d(conv, arg_num[0],
+                                                            arg_num[1], arg_num[2], arg_num[3], out_shape)))
 
     y = (conv + 1) * 127.5
     # Remove border effect reducing padding.
