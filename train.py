@@ -8,11 +8,11 @@ import imageio
 class CONFIG:
     IMAGE_WIDTH = 256
     IMAGE_HEIGHT = 256
-    BATCH_SIZE = 3
+    BATCH_SIZE = 4
     COLOR_CHANNELS = 3
     VGG_MODEL = 'pretrained-model/imagenet-vgg-verydeep-19.mat'  # Pick the VGG 19-layer model by from the paper "Very Deep Convolutional Networks for Large-Scale Image Recognition".
     STYLE_IMAGE = 'images/wave.jpg'  # Style image to use.
-    CONTENT_IMAGE_FILE = './train2014'  # Content image to use.
+    CONTENT_IMAGE_FILE = 'E:/python学习/PycharmProjects/train2014/train2014'  # Content image to use.
     OUTPUT_DIR = 'output/'
 
     W_CONTENT = 1
@@ -24,7 +24,7 @@ def train_fnst():
                                                  CONFIG.IMAGE_HEIGHT, CONFIG.IMAGE_WIDTH)
         with tf.Session() as sess:
             train_data = train_image(CONFIG.BATCH_SIZE, CONFIG.IMAGE_HEIGHT,
-                               CONFIG.IMAGE_WIDTH, CONFIG.CONTENT_IMAGE_FILE,epochs=1000)
+                               CONFIG.IMAGE_WIDTH, CONFIG.CONTENT_IMAGE_FILE,epochs=2)
             y_data = my_model.get_my_model(train_data)
             process_data = [reshape_and_normalize_image(image)
                           for image in tf.unstack(y_data, axis=0, num=CONFIG.BATCH_SIZE)]
@@ -63,10 +63,11 @@ def train_fnst():
                     if step%10 == 0:
                       print('step: %d, total Loss %f, secs/step: %f'
                                         %(step,loss_t, elapsed_time))
-                    if step == 1500:
+                    if step % 5000 == 0:
                         for index in range(3):
                             imge = np.clip(y[index],0,255).astype('uint8')
                             imageio.imsave(CONFIG.OUTPUT_DIR+str(index)+".jpg",imge);
+                        saver.save(sess, './output/fast-style-model.ckpt-done')
             except tf.errors.OutOfRangeError:
                 print("done")
                 saver.save(sess, './output/fast-style-model.ckpt-done')
